@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IELTS Listening TTS Trainer & Quota Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- Document Extraction Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid font-bold fa-headphones-simple text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-wide text-white">IELTS Audio Prep</h1>
+          <p class="text-xs text-indigo-400 font-medium">Multi-Accent Gemini TTS Trainer & Quota Inspector</p>
+        </div>
+      </div>
+      
+      <!-- API Key & Quota Inspector Bar -->
+      <div class="flex items-center space-x-2">
+        <div class="relative">
+          <input type="password" id="apiKeyInput" placeholder="Masukkan Gemini API Key..." 
+                 class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pl-8 w-44 sm:w-60 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
+          <i class="fa-solid fa-key text-xs text-slate-500 absolute left-2.5 top-3"></i>
+        </div>
+        
+        <button id="saveKeyBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition-colors">
+          Simpan
+        </button>
+
+        <button id="checkQuotaBtn" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1.5" title="Uji validitas & status kuota API Key">
+          <i class="fa-solid fa-shield-halved text-xs"></i>
+          <span class="hidden sm:inline">Cek Status API</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+
+    <!-- Left Column: Settings, File Upload & Script Input (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col space-y-6 overflow-y-auto pr-1">
+      
+      <!-- API Status & Quota Health Banner -->
+      <div id="quotaStatusCard" class="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-3">
+          <div id="quotaBadgeIcon" class="p-2 rounded-xl bg-slate-800 text-slate-400">
+            <i class="fa-solid fa-circle-question text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <p id="quotaTitleText" class="font-semibold text-slate-200">Status Gemini API</p>
+              <span id="quotaPillBadge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Belum Dicek</span>
+            </div>
+            <p id="quotaDetailText" class="text-[11px] text-slate-400 mt-0.5">Klik "Cek Status API" untuk menguji validitas kuota key Anda.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 1: Document Upload Dropzone -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-800/80 pb-2.5">
+          <h2 class="font-semibold text-sm uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+            <i class="fa-solid fa-file-arrow-up text-xs"></i> Unggah Dokumen Naskah
+          </h2>
+          <span class="text-[11px] text-slate-400 font-medium">PDF, DOCX, TXT</span>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div id="dropZone" class="border-2 border-dashed border-slate-800 hover:border-indigo-500/80 bg-slate-900/60 rounded-xl p-4 text-center cursor-pointer transition-all duration-200 group relative">
+          <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt" class="hidden" />
+          
+          <div class="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+            <div class="p-2.5 bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 rounded-xl transition-colors">
+              <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-200 group-hover:text-indigo-300">Klik atau seret file dokumen ke sini</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Mendukung file .pdf, .docx, .doc, atau .txt</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Upload Loading / Info Banner -->
+        <div id="fileInfoBanner" class="hidden bg-slate-900/90 border border-indigo-500/30 rounded-xl p-3 flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-2.5 overflow-hidden">
+            <div id="fileIconContainer" class="p-1.5 bg-indigo-600/20 text-indigo-400 rounded-lg shrink-0">
+              <i class="fa-solid fa-file-lines text-sm"></i>
+            </div>
+            <div class="overflow-hidden">
+              <p id="fileNameText" class="font-semibold text-slate-200 truncate">document.pdf</p>
+              <p id="fileStatsText" class="text-[10px] text-indigo-300/80">Memproses teks...</p>
+            </div>
+          </div>
+          <button id="clearFileBtn" class="text-slate-400 hover:text-red-400 transition p-1 shrink-0" title="Hapus file">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel 2: Speaker Configuration -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+          <h2 class="font-semibold text-sm uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+            <i class="fa-solid fa-users text-xs"></i> Pengaturan Speaker & Aksen
+          </h2>
+          <div class="flex items-center gap-2">
+            <button id="autoDetectSpeakersBtn" title="Deteksi speaker dari isi naskah" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1 font-medium">
+              <i class="fa-solid fa-robot text-[10px]"></i> Auto-Deteksi
+            </button>
+            <button id="addSpeakerBtn" class="text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 px-2 py-1 rounded-lg border border-indigo-500/30 transition flex items-center gap-1 font-medium">
+              <i class="fa-solid fa-plus text-[10px]"></i> Tambah
+            </button>
+          </div>
+        </div>
+
+        <div id="speakersContainer" class="space-y-3">
+          <!-- Speakers rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Panel 3: Script Input -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm flex-1 flex flex-col space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+          <h2 class="font-semibold text-sm uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+            <i class="fa-solid fa-file-lines text-xs"></i> Naskah Percakapan
+          </h2>
+          <button id="loadSampleBtn" class="text-xs text-slate-400 hover:text-indigo-300 transition">
+            <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Contoh
+          </button>
+        </div>
+
+        <div class="flex-1 flex flex-col space-y-2">
+          <textarea id="scriptTextarea" placeholder="Masukkan percakapan atau unggah dokumen di atas...&#10;&#10;Contoh format:&#10;Speaker A: Good morning! Welcome to the university office.&#10;Speaker B: Thanks! I need help finding campus housing." 
+                    class="w-full flex-1 bg-slate-900 border border-slate-800 text-slate-200 text-sm rounded-xl p-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none font-mono leading-relaxed min-h-[180px]"></textarea>
+        </div>
+
+        <button id="parseScriptBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 text-sm">
+          <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Parse & Siapkan Dialog
+        </button>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Player, Options & Interactive Audio Line View (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col space-y-6 overflow-hidden">
+      
+      <!-- Player Control Dashboard -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h2 class="font-bold text-base text-white">IELTS Audio Player</h2>
+            <p id="statusText" class="text-xs text-slate-400">Siap untuk memproses naskah</p>
+          </div>
+
+          <!-- Top Control Badges -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- Audio Cache Badge & Clear Cache Button -->
+            <button id="clearCacheBtn" class="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2.5 py-1 rounded-xl text-xs text-emerald-400 transition" title="Hapus cache audio ter-generate untuk menghemat RAM">
+              <i class="fa-solid fa-database text-[10px]"></i>
+              <span id="cacheBadgeText" class="font-medium">Cache: 0 audio</span>
+            </button>
+
+            <!-- Playback Speed Control -->
+            <div class="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-xs">
+              <i class="fa-solid fa-gauge-high text-slate-400"></i>
+              <label for="speedSelect" class="text-slate-400 font-medium">Laju:</label>
+              <select id="speedSelect" class="bg-transparent text-indigo-300 font-semibold focus:outline-none cursor-pointer">
+                <option value="0.75" class="bg-slate-900 text-slate-200">0.75x</option>
+                <option value="1.0" selected class="bg-slate-900 text-slate-200">1.0x (Normal)</option>
+                <option value="1.25" class="bg-slate-900 text-slate-200">1.25x</option>
+                <option value="1.5" class="bg-slate-900 text-slate-200">1.5x</option>
+              </select>
+            </div>
+
+            <!-- Blind Mode Toggle -->
+            <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl text-xs">
+              <span class="font-medium text-slate-300">Blind Mode</span>
+              <button id="blindModeBtn" role="switch" aria-checked="false" class="w-8 h-4 bg-slate-800 rounded-full p-0.5 transition-colors duration-200 ease-in-out relative">
+                <div id="blindModeDot" class="w-3 h-3 bg-slate-400 rounded-full transition-transform duration-200 ease-in-out transform translate-x-0"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Play & Download Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div class="flex items-center space-x-2">
+            <button id="playAllBtn" disabled class="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-semibold px-4 py-2 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center gap-2 text-xs">
+              <i class="fa-solid fa-play"></i> Play Seluruh Dialog
+            </button>
+            <button id="stopBtn" disabled class="bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-50 px-3 py-2 rounded-xl text-xs font-medium transition">
+              <i class="fa-solid fa-square"></i> Stop
+            </button>
+          </div>
+
+          <!-- Download Full Audio Button & Resume Progress -->
+          <div class="flex items-center space-x-2">
+            <button id="resumeDownloadBtn" class="hidden bg-amber-600 hover:bg-amber-500 text-white font-medium px-3.5 py-2 rounded-xl text-xs transition shadow-lg shadow-amber-600/20 flex items-center gap-1.5 animate-pulse">
+              <i class="fa-solid fa-rotate-right"></i> Lanjutkan Download Sisa (<span id="resumeProgressText">0/0</span>)
+            </button>
+            
+            <button id="downloadFullAudioBtn" disabled class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-medium px-3.5 py-2 rounded-xl text-xs transition shadow-lg shadow-indigo-600/20 flex items-center gap-2">
+              <i class="fa-solid fa-file-arrow-down"></i> Download Audio Utuh (.wav)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dialogue Cards Stream -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm flex-1 flex flex-col overflow-hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-semibold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i class="fa-solid fa-list-ul"></i> Urutan Dialog & Audio per Kalimat
+          </h3>
+          <span id="lineProgress" class="text-xs text-slate-500">0/0 Baris</span>
+        </div>
+
+        <!-- Scrollable Dialogue List -->
+        <div id="dialogueList" class="flex-1 overflow-y-auto space-y-3 pr-2">
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 py-12">
+            <i class="fa-solid fa-file-audio text-4xl opacity-30"></i>
+            <p class="text-sm">Klik "Parse & Siapkan Dialog" untuk menampilkan naskah di sini</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Quota / Rate Limit Error Modal Dialog -->
+  <div id="quotaModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center space-x-3 text-amber-400 border-b border-slate-800 pb-3">
+        <div class="p-2.5 bg-amber-500/10 rounded-xl">
+          <i id="quotaModalIcon" class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+        <div>
+          <h3 id="quotaModalTitle" class="font-bold text-base text-white">Batas Kuota / Rate Limit Tercapai</h3>
+          <p id="quotaModalSubtitle" class="text-xs text-amber-300">Gemini API Error 429 (RESOURCE_EXHAUSTED)</p>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-300 leading-relaxed space-y-2" id="quotaModalBody">
+        <p>Batas penggunaan API Key Anda saat ini telah habis atau telah melebihi batas batas panggilan per menit (RPM/RPD).</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs space-y-1 font-mono text-slate-400">
+        <p class="text-slate-500 font-sans font-semibold text-[10px] uppercase">Solusi Langkah Cepat:</p>
+        <ul class="list-disc list-inside space-y-1 text-[11px]">
+          <li>Tunggu 30 - 60 detik (Rate Limit RPM reset otomatis).</li>
+          <li>Gunakan API Key Gemini baru / cadangan lain.</li>
+          <li>Audio yang berhasil ter-generate tetap tersimpan di Cache.</li>
+        </ul>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button id="closeQuotaModalBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold transition">
+          Tutup
+        </button>
+        <button id="retryQuotaActionBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate-right text-[10px]"></i> Coba Lagi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Setup PDF.js Worker ---
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // --- Available Accent / Language Options ---
+    const REGIONS = [
+      { code: "en-GB", label: "English (UK / British)", flag: "🇬🇧" },
+      { code: "en-US", label: "English (US)", flag: "🇺🇸" },
+      { code: "id-ID", label: "Indonesian (Indonesia)", flag: "🇮🇩" }
+    ];
+
+    // --- Voices mapped per region ---
+    const VOICE_CATALOG = {
+      "en-GB": [
+        { name: "Kore", gender: "Female", desc: "British Academic / Firm" },
+        { name: "Charon", gender: "Male", desc: "British Formal / Deep" },
+        { name: "Callirrhoe", gender: "Female", desc: "British Natural / Easy-going" },
+        { name: "Orus", gender: "Male", desc: "British Clear" }
+      ],
+      "en-US": [
+        { name: "Puck", gender: "Male", desc: "US Upbeat / Clear" },
+        { name: "Aoede", gender: "Female", desc: "US Breezy / Natural" },
+        { name: "Fenrir", gender: "Male", desc: "US Dynamic" },
+        { name: "Zephyr", gender: "Female", desc: "US Bright / Friendly" },
+        { name: "Leda", gender: "Female", desc: "US Youthful" }
+      ],
+      "id-ID": [
+        { name: "Kore", gender: "Female", desc: "Indonesian Clear / Standard" },
+        { name: "Puck", gender: "Male", desc: "Indonesian Natural / Conversational" },
+        { name: "Aoede", gender: "Female", desc: "Indonesian Gentle" },
+        { name: "Charon", gender: "Male", desc: "Indonesian Formal" }
+      ]
+    };
+
+    const DEFAULT_SPEAKERS = [
+      { name: "Speaker A", region: "en-GB", voice: "Kore", tone: "Formal British academic style, RP accent, clear pronunciation" },
+      { name: "Speaker B", region: "en-US", voice: "Puck", tone: "Natural General American accent, relaxed conversational pace" },
+      { name: "Speaker C", region: "id-ID", voice: "Aoede", tone: "Bahasa Indonesia yang jelas, ramah, dan artikulatif" }
+    ];
+
+    const SAMPLE_MIXED_SCRIPT = 
+`Speaker A: Good morning! Welcome to the University International Office in London. How can I assist you today?
+Speaker B: Hey there! Thanks, I'm an exchange student from California, and I need help finding campus housing.
+Speaker C: Selamat datang! Saya staf administrasi yang akan membantu proses berkas dan pendaftaran Anda di sini.
+Speaker A: Excellent! We have both UK hall options and private flats available near the campus.
+Speaker B: Sounds great! What's the average weekly rent including utilities?`;
+
+    // --- Application State ---
+    let apiKey = localStorage.getItem("gemini_tts_api_key") || "";
+    let speakers = JSON.parse(JSON.stringify(DEFAULT_SPEAKERS));
+    let parsedLines = [];
+    let isPlaying = false;
+    let currentLineIndex = -1;
+    let currentAudioSource = null;
+    let audioContext = null;
+    let isBlindMode = false;
+    let playbackSpeed = 1.0;
+
+    // --- Audio Cache Store (In-Memory) ---
+    // Key: hash(text + speaker + voice + tone) -> AudioBuffer
+    const audioCache = new Map();
+
+    // --- Batch Download Resume State ---
+    let batchDownloadState = {
+      inProgress: false,
+      completedBuffers: [],
+      failedIndex: -1
+    };
+
+    // --- DOM Elements ---
+    const apiKeyInput = document.getElementById("apiKeyInput");
+    const saveKeyBtn = document.getElementById("saveKeyBtn");
+    const checkQuotaBtn = document.getElementById("checkQuotaBtn");
+    const quotaStatusCard = document.getElementById("quotaStatusCard");
+    const quotaBadgeIcon = document.getElementById("quotaBadgeIcon");
+    const quotaTitleText = document.getElementById("quotaTitleText");
+    const quotaPillBadge = document.getElementById("quotaPillBadge");
+    const quotaDetailText = document.getElementById("quotaDetailText");
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const fileInfoBanner = document.getElementById("fileInfoBanner");
+    const fileNameText = document.getElementById("fileNameText");
+    const fileStatsText = document.getElementById("fileStatsText");
+    const fileIconContainer = document.getElementById("fileIconContainer");
+    const clearFileBtn = document.getElementById("clearFileBtn");
+    const speakersContainer = document.getElementById("speakersContainer");
+    const addSpeakerBtn = document.getElementById("addSpeakerBtn");
+    const autoDetectSpeakersBtn = document.getElementById("autoDetectSpeakersBtn");
+    const scriptTextarea = document.getElementById("scriptTextarea");
+    const parseScriptBtn = document.getElementById("parseScriptBtn");
+    const loadSampleBtn = document.getElementById("loadSampleBtn");
+    const dialogueList = document.getElementById("dialogueList");
+    const playAllBtn = document.getElementById("playAllBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const downloadFullAudioBtn = document.getElementById("downloadFullAudioBtn");
+    const resumeDownloadBtn = document.getElementById("resumeDownloadBtn");
+    const resumeProgressText = document.getElementById("resumeProgressText");
+    const speedSelect = document.getElementById("speedSelect");
+    const statusText = document.getElementById("statusText");
+    const lineProgress = document.getElementById("lineProgress");
+    const blindModeBtn = document.getElementById("blindModeBtn");
+    const blindModeDot = document.getElementById("blindModeDot");
+    const clearCacheBtn = document.getElementById("clearCacheBtn");
+    const cacheBadgeText = document.getElementById("cacheBadgeText");
+
+    // Modal elements
+    const quotaModal = document.getElementById("quotaModal");
+    const quotaModalTitle = document.getElementById("quotaModalTitle");
+    const quotaModalSubtitle = document.getElementById("quotaModalSubtitle");
+    const quotaModalBody = document.getElementById("quotaModalBody");
+    const closeQuotaModalBtn = document.getElementById("closeQuotaModalBtn");
+    const retryQuotaActionBtn = document.getElementById("retryQuotaActionBtn");
+
+    // --- Initialization ---
+    window.onload = () => {
+      if (apiKey) {
+        apiKeyInput.value = apiKey;
+        checkApiHealth(false);
+      }
+      renderSpeakers();
+      scriptTextarea.value = SAMPLE_MIXED_SCRIPT;
+      parseScript();
+      setupFileUploadEvents();
+      updateCacheBadge();
+    };
+
+    // --- API Key & Quota Inspector ---
+    saveKeyBtn.addEventListener("click", () => {
+      apiKey = apiKeyInput.value.trim();
+      localStorage.setItem("gemini_tts_api_key", apiKey);
+      showToast("API Key berhasil disimpan!");
+      if (apiKey) checkApiHealth(true);
+    });
+
+    checkQuotaBtn.addEventListener("click", () => {
+      apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        showToast("Silakan masukkan Gemini API Key terlebih dahulu!");
+        apiKeyInput.focus();
+        return;
+      }
+      checkApiHealth(true);
+    });
+
+    async function checkApiHealth(showToastAlert = true) {
+      if (!apiKey) {
+        updateQuotaStatusUI("NONE", "API Key Belum Diberikan", "Silakan masukkan API Key Gemini Anda.");
+        return;
+      }
+
+      updateQuotaStatusUI("LOADING", "Memeriksa Status API...", "Mengirim tes koneksi ke server Gemini API...");
+
+      try {
+        // Lightweight call to list models or test lightweight generation
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        
+        if (res.ok) {
+          updateQuotaStatusUI("OK", "API Active & Ready", "Kuota API aktif dan siap digunakan untuk Audio TTS.");
+          if (showToastAlert) showToast("API Key Aktif & Kuota Tersedia!");
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          const status = res.status;
+          const msg = errData.error?.message || "";
+
+          if (status === 429 || msg.includes("QUOTA") || msg.includes("RESOURCE_EXHAUSTED")) {
+            updateQuotaStatusUI("QUOTA_EXHAUSTED", "Quota Limit Exceeded (429)", "Batas panggilan API per menit/hari habis. Tunggu reset atau ganti key.");
+            if (showToastAlert) showQuotaModal("API Rate Limit / Quota Habis", "Error 429: Batas panggilan Gemini API tercapai.", msg);
+          } else if (status === 400 || status === 403 || msg.includes("API_KEY_INVALID")) {
+            updateQuotaStatusUI("INVALID", "API Key Tidak Valid (403)", "Key salah, kadaluarsa, atau API service belum diaktifkan.");
+            if (showToastAlert) showToast("API Key tidak valid atau ditolak!");
+          } else {
+            updateQuotaStatusUI("ERROR", `Error Status (${status})`, msg || "Terjadi kesalahan koneksi API.");
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        updateQuotaStatusUI("OFFLINE", "Gagal Terhubung", "Periksa koneksi internet Anda.");
+      }
+    }
+
+    function updateQuotaStatusUI(type, title, detail) {
+      quotaTitleText.textContent = title;
+      quotaDetailText.textContent = detail;
+
+      if (type === "OK") {
+        quotaBadgeIcon.className = "p-2 rounded-xl bg-emerald-500/20 text-emerald-400";
+        quotaBadgeIcon.innerHTML = `<i class="fa-solid fa-circle-check text-base"></i>`;
+        quotaPillBadge.className = "px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        quotaPillBadge.textContent = "AKTIF";
+      } else if (type === "QUOTA_EXHAUSTED") {
+        quotaBadgeIcon.className = "p-2 rounded-xl bg-amber-500/20 text-amber-400";
+        quotaBadgeIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-base"></i>`;
+        quotaPillBadge.className = "px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40";
+        quotaPillBadge.textContent = "RATE LIMITED (429)";
+      } else if (type === "INVALID") {
+        quotaBadgeIcon.className = "p-2 rounded-xl bg-red-500/20 text-red-400";
+        quotaBadgeIcon.innerHTML = `<i class="fa-solid fa-circle-xmark text-base"></i>`;
+        quotaPillBadge.className = "px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500/20 text-red-300 border border-red-500/40";
+        quotaPillBadge.textContent = "INVALID KEY";
+      } else if (type === "LOADING") {
+        quotaBadgeIcon.className = "p-2 rounded-xl bg-indigo-500/20 text-indigo-400";
+        quotaBadgeIcon.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-base"></i>`;
+        quotaPillBadge.className = "px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40";
+        quotaPillBadge.textContent = "MEMERIKSA...";
+      } else {
+        quotaBadgeIcon.className = "p-2 rounded-xl bg-slate-800 text-slate-400";
+        quotaBadgeIcon.innerHTML = `<i class="fa-solid fa-circle-question text-base"></i>`;
+        quotaPillBadge.className = "px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700";
+        quotaPillBadge.textContent = "BELUM DICEK";
+      }
+    }
+
+    // --- Quota Modal Handlers ---
+    function showQuotaModal(title, subtitle, bodyMsg) {
+      quotaModalTitle.textContent = title;
+      quotaModalSubtitle.textContent = subtitle;
+      if (bodyMsg) {
+        quotaModalBody.innerHTML = `<p class="font-semibold text-amber-200">Detail dari Gemini API:</p><p class="bg-slate-950 p-2 rounded border border-slate-800 font-mono text-[11px] text-slate-300 break-words">${bodyMsg}</p>`;
+      }
+      quotaModal.classList.remove("hidden");
+    }
+
+    closeQuotaModalBtn.addEventListener("click", () => quotaModal.classList.add("hidden"));
+    retryQuotaActionBtn.addEventListener("click", () => {
+      quotaModal.classList.add("hidden");
+      checkApiHealth(true);
+    });
+
+    // --- Audio Cache Management ---
+    function getCacheKey(text, speakerName) {
+      const spkConfig = speakers.find(s => s.name.toLowerCase() === speakerName.toLowerCase()) || {};
+      return `${speakerName}|${spkConfig.region || ''}|${spkConfig.voice || ''}|${spkConfig.tone || ''}|${text.trim()}`;
+    }
+
+    function updateCacheBadge() {
+      const count = audioCache.size;
+      cacheBadgeText.textContent = `Cache: ${count} audio`;
+    }
+
+    clearCacheBtn.addEventListener("click", () => {
+      if (audioCache.size === 0) {
+        showToast("Cache audio sudah kosong.");
+        return;
+      }
+      audioCache.clear();
+      parsedLines.forEach(l => l.audioBuffer = null);
+      updateCacheBadge();
+      showToast("Cache memori audio berhasil dibersihkan!");
+    });
+
+    // --- Document Upload Handlers ---
+    function setupFileUploadEvents() {
+      dropZone.addEventListener("click", () => fileInput.click());
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("border-indigo-500", "bg-indigo-950/20");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("border-indigo-500", "bg-indigo-950/20");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("border-indigo-500", "bg-indigo-950/20");
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleSelectedFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleSelectedFile(e.target.files[0]);
+        }
+      });
+
+      clearFileBtn.addEventListener("click", () => {
+        fileInput.value = "";
+        fileInfoBanner.classList.add("hidden");
+      });
+    }
+
+    async function handleSelectedFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      showFileBanner(file.name, "Mengekstrak teks...", getFileIconClass(ext));
+
+      try {
+        let extractedText = "";
+
+        if (ext === "pdf") {
+          extractedText = await extractTextFromPDF(file);
+        } else if (ext === "docx" || ext === "doc") {
+          extractedText = await extractTextFromDocx(file);
+        } else if (ext === "txt") {
+          extractedText = await extractTextFromTXT(file);
+        } else {
+          throw new Error("Format file tidak didukung. Gunakan .pdf, .docx, atau .txt");
+        }
+
+        if (!extractedText.trim()) {
+          throw new Error("Teks dalam dokumen kosong atau tidak terdeteksi.");
+        }
+
+        scriptTextarea.value = extractedText;
+        const wordCount = extractedText.trim().split(/\s+/).length;
+        const charCount = extractedText.length;
+        
+        updateFileBannerStats(`${wordCount} kata • ${charCount} karakter`);
+        showToast(`Dokumen "${file.name}" berhasil dibaca!`);
+
+        autoDetectSpeakers(false);
+        parseScript();
+      } catch (err) {
+        console.error(err);
+        showToast(`Gagal membaca file: ${err.message}`);
+        updateFileBannerStats("Gagal mengekstrak teks");
+      }
+    }
+
+    function showFileBanner(fileName, status, iconClass) {
+      fileInfoBanner.classList.remove("hidden");
+      fileNameText.textContent = fileName;
+      fileStatsText.textContent = status;
+      fileIconContainer.innerHTML = `<i class="${iconClass} text-sm"></i>`;
+    }
+
+    function updateFileBannerStats(text) {
+      fileStatsText.textContent = text;
+    }
+
+    function getFileIconClass(ext) {
+      if (ext === "pdf") return "fa-solid fa-file-pdf text-red-400";
+      if (ext === "docx" || ext === "doc") return "fa-solid fa-file-word text-blue-400";
+      return "fa-solid fa-file-lines text-slate-300";
+    }
+
+    // --- PDF Extraction via PDF.js ---
+    async function extractTextFromPDF(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(" ");
+        fullText += pageText + "\n";
+      }
+
+      return cleanExtractedText(fullText);
+    }
+
+    // --- Word Extraction via Mammoth.js ---
+    async function extractTextFromDocx(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      return cleanExtractedText(result.value);
+    }
+
+    // --- Plain Text Extraction via FileReader ---
+    function extractTextFromTXT(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(cleanExtractedText(e.target.result));
+        reader.onerror = (e) => reject(new Error("Gagal membaca file teks."));
+        reader.readAsText(file);
+      });
+    }
+
+    function cleanExtractedText(text) {
+      return text
+        .replace(/\r\n/g, "\n")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n\s*\n/g, "\n")
+        .trim();
+    }
+
+    // --- Auto Speaker Detection ---
+    function autoDetectSpeakers(notifyIfNone = true) {
+      const text = scriptTextarea.value;
+      if (!text) return;
+
+      const lines = text.split("\n");
+      const detectedNames = new Set();
+
+      lines.forEach(line => {
+        const match = line.trim().match(/^([^:]+):/);
+        if (match) {
+          const name = match[1].trim();
+          if (name.length > 0 && name.length < 30 && !name.toLowerCase().startsWith("http")) {
+            detectedNames.add(name);
+          }
+        }
+      });
+
+      if (detectedNames.size > 0) {
+        speakers = Array.from(detectedNames).map((name, idx) => {
+          const defaultRegions = ["en-GB", "en-US", "id-ID"];
+          const region = defaultRegions[idx % defaultRegions.length];
+          const voices = VOICE_CATALOG[region];
+
+          return {
+            name: name,
+            region: region,
+            voice: voices[idx % voices.length].name,
+            tone: region === "id-ID" ? "Aksen Indonesia yang alami dan jelas" : "Natural dialogue tone, clear pronunciation"
+          };
+        });
+
+        renderSpeakers();
+        showToast(`Berhasil mendeteksi ${speakers.length} speaker dari naskah!`);
+      } else if (notifyIfNone) {
+        showToast("Tidak ditemukan format 'Nama:' pada naskah.");
+      }
+    }
+
+    autoDetectSpeakersBtn.addEventListener("click", () => autoDetectSpeakers(true));
+
+    // --- Speed & Blind Mode Controls ---
+    speedSelect.addEventListener("change", (e) => {
+      playbackSpeed = parseFloat(e.target.value);
+    });
+
+    blindModeBtn.addEventListener("click", () => {
+      isBlindMode = !isBlindMode;
+      blindModeBtn.setAttribute("aria-checked", isBlindMode);
+      if (isBlindMode) {
+        blindModeBtn.classList.replace("bg-slate-800", "bg-indigo-600");
+        blindModeDot.classList.replace("translate-x-0", "translate-x-4");
+      } else {
+        blindModeBtn.classList.replace("bg-indigo-600", "bg-slate-800");
+        blindModeDot.classList.replace("translate-x-4", "translate-x-0");
+      }
+      renderDialogueList();
+    });
+
+    // --- Render Speaker Configuration Controls ---
+    function renderSpeakers() {
+      speakersContainer.innerHTML = "";
+      speakers.forEach((spk, idx) => {
+        const card = document.createElement("div");
+        card.className = "p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2.5 text-xs relative group";
+
+        const regionOptionsHtml = REGIONS.map(r => 
+          `<option value="${r.code}" ${r.code === spk.region ? 'selected' : ''}>${r.flag} ${r.label}</option>`
+        ).join('');
+
+        const currentVoices = VOICE_CATALOG[spk.region] || VOICE_CATALOG["en-GB"];
+        const voiceOptionsHtml = currentVoices.map(v => 
+          `<option value="${v.name}" ${v.name === spk.voice ? 'selected' : ''}>${v.name} (${v.gender} - ${v.desc})</option>`
+        ).join('');
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <input type="text" value="${spk.name}" data-idx="${idx}" class="spk-name bg-slate-800 text-white font-semibold px-2 py-1 rounded border border-slate-700 w-1/3 focus:outline-none focus:border-indigo-500" placeholder="Nama Speaker" />
+            
+            <select data-idx="${idx}" class="spk-region bg-slate-800 text-indigo-300 font-medium px-2 py-1 rounded border border-slate-700 w-1/3 focus:outline-none focus:border-indigo-500">
+              ${regionOptionsHtml}
+            </select>
+
+            ${speakers.length > 1 ? `<button data-idx="${idx}" class="remove-spk text-slate-500 hover:text-red-400 p-1"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-slate-400 w-14">Suara:</span>
+            <select data-idx="${idx}" class="spk-voice bg-slate-800 text-slate-200 px-2 py-1 rounded border border-slate-700 flex-1 focus:outline-none focus:border-indigo-500">
+              ${voiceOptionsHtml}
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-slate-400 w-14">Gaya/Nada:</span>
+            <input type="text" value="${spk.tone}" data-idx="${idx}" class="spk-tone flex-1 bg-slate-950/60 text-slate-300 px-2.5 py-1 rounded border border-slate-800/80 text-[11px] focus:outline-none focus:border-indigo-500" placeholder="Petunjuk Aksen / Gaya Suara" />
+          </div>
+        `;
+        speakersContainer.appendChild(card);
+      });
+
+      document.querySelectorAll(".spk-name").forEach(el => {
+        el.addEventListener("change", (e) => { speakers[e.target.dataset.idx].name = e.target.value; });
+      });
+
+      document.querySelectorAll(".spk-region").forEach(el => {
+        el.addEventListener("change", (e) => {
+          const idx = e.target.dataset.idx;
+          const newRegion = e.target.value;
+          speakers[idx].region = newRegion;
+
+          const avail = VOICE_CATALOG[newRegion];
+          if (avail && avail.length > 0) {
+            speakers[idx].voice = avail[0].name;
+            if (newRegion === "en-GB") {
+              speakers[idx].tone = "British accent, clear pronunciation";
+            } else if (newRegion === "en-US") {
+              speakers[idx].tone = "American accent, natural pace";
+            } else if (newRegion === "id-ID") {
+              speakers[idx].tone = "Aksen Indonesia yang alami dan jelas";
+            }
+          }
+          renderSpeakers();
+        });
+      });
+
+      document.querySelectorAll(".spk-voice").forEach(el => {
+        el.addEventListener("change", (e) => { speakers[e.target.dataset.idx].voice = e.target.value; });
+      });
+
+      document.querySelectorAll(".spk-tone").forEach(el => {
+        el.addEventListener("change", (e) => { speakers[e.target.dataset.idx].tone = e.target.value; });
+      });
+
+      document.querySelectorAll(".remove-spk").forEach(el => {
+        el.addEventListener("click", (e) => {
+          speakers.splice(e.currentTarget.dataset.idx, 1);
+          renderSpeakers();
+        });
+      });
+    }
+
+    addSpeakerBtn.addEventListener("click", () => {
+      const nextChar = String.fromCharCode(65 + speakers.length);
+      const defaultRegions = ["en-GB", "en-US", "id-ID"];
+      const chosenRegion = defaultRegions[speakers.length % defaultRegions.length];
+      const availVoices = VOICE_CATALOG[chosenRegion];
+
+      speakers.push({ 
+        name: `Speaker ${nextChar}`, 
+        region: chosenRegion, 
+        voice: availVoices[0].name, 
+        tone: chosenRegion === "id-ID" ? "Bahasa Indonesia yang jelas" : "Natural dialogue accent" 
+      });
+      renderSpeakers();
+    });
+
+    loadSampleBtn.addEventListener("click", () => {
+      scriptTextarea.value = SAMPLE_MIXED_SCRIPT;
+      autoDetectSpeakers(false);
+      parseScript();
+    });
+
+    // --- Script Parser ---
+    function parseScript() {
+      const text = scriptTextarea.value.trim();
+      if (!text) return;
+
+      const rawLines = text.split("\n");
+      parsedLines = [];
+
+      rawLines.forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        const match = trimmed.match(/^([^:]+):\s*(.+)$/);
+        let speakerName = speakers[0]?.name || "Speaker A";
+        let lineText = trimmed;
+
+        if (match) {
+          speakerName = match[1].trim();
+          lineText = match[2].trim();
+        }
+
+        // Attach cached buffer if present
+        const cacheKey = getCacheKey(lineText, speakerName);
+        const cachedBuffer = audioCache.get(cacheKey) || null;
+
+        parsedLines.push({ speaker: speakerName, text: lineText, audioBuffer: cachedBuffer });
+      });
+
+      renderDialogueList();
+      playAllBtn.disabled = parsedLines.length === 0;
+      downloadFullAudioBtn.disabled = parsedLines.length === 0;
+      lineProgress.textContent = `0/${parsedLines.length} Baris`;
+      statusText.textContent = `Berhasil memuat ${parsedLines.length} baris percakapan.`;
+    }
+
+    parseScriptBtn.addEventListener("click", parseScript);
+
+    // --- Render Dialogue List ---
+    function renderDialogueList() {
+      if (parsedLines.length === 0) {
+        dialogueList.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 py-12">
+            <i class="fa-solid fa-file-audio text-4xl opacity-30"></i>
+            <p class="text-sm">Klik "Parse & Siapkan Dialog" untuk menampilkan naskah di sini</p>
+          </div>`;
+        return;
+      }
+
+      dialogueList.innerHTML = "";
+      parsedLines.forEach((item, idx) => {
+        const isCurrent = idx === currentLineIndex;
+        const spkConfig = speakers.find(s => s.name.toLowerCase() === item.speaker.toLowerCase());
+        const regionObj = REGIONS.find(r => r.code === spkConfig?.region) || { flag: "🌐", label: "General" };
+
+        const hasCachedAudio = !!item.audioBuffer || audioCache.has(getCacheKey(item.text, item.speaker));
+
+        const card = document.createElement("div");
+        card.className = `p-3.5 rounded-xl border transition-all duration-200 ${
+          isCurrent 
+            ? 'bg-indigo-950/40 border-indigo-500 shadow-md ring-1 ring-indigo-500/50' 
+            : 'bg-slate-900/80 border-slate-800/80 hover:border-slate-700'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 border border-slate-700/60 flex items-center gap-1.5">
+                <span>${regionObj.flag}</span>
+                <span>${item.speaker}</span>
+              </span>
+              <span class="text-[10px] text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800/80">
+                ${spkConfig ? spkConfig.voice : 'Default'}
+              </span>
+              ${hasCachedAudio ? `<span class="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-medium">Cached</span>` : ''}
+            </div>
+
+            <div class="flex items-center space-x-1">
+              <button class="play-single-btn text-xs bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-300 px-2 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1" data-idx="${idx}" title="Putar kalimat ini">
+                <i class="fa-solid ${isCurrent && isPlaying ? 'fa-spinner fa-spin' : 'fa-play'} text-[10px]"></i> Play
+              </button>
+              <button class="download-single-btn text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1" data-idx="${idx}" title="Download audio kalimat ini (.wav)">
+                <i class="fa-solid fa-download text-[10px]"></i> WAV
+              </button>
+            </div>
+          </div>
+          <p class="text-sm text-slate-200 leading-relaxed font-normal ${isBlindMode && !isCurrent ? 'blur-sm select-none opacity-40 transition-all' : ''}">
+            ${item.text}
+          </p>
+        `;
+
+        dialogueList.appendChild(card);
+      });
+
+      document.querySelectorAll(".play-single-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const idx = parseInt(e.currentTarget.dataset.idx, 10);
+          playSingleLine(idx);
+        });
+      });
+
+      document.querySelectorAll(".download-single-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const idx = parseInt(e.currentTarget.dataset.idx, 10);
+          downloadSingleLineAudio(idx);
+        });
+      });
+    }
+
+    // --- Gemini TTS API Fetcher & Caching Engine ---
+    async function fetchGeminiTTS(text, speakerName) {
+      const cacheKey = getCacheKey(text, speakerName);
+
+      // Return cached audio if present
+      if (audioCache.has(cacheKey)) {
+        return audioCache.get(cacheKey);
+      }
+
+      if (!apiKey) {
+        throw new Error("API Key belum disetting. Silakan masukkan Gemini API Key Anda.");
+      }
+
+      const spkConfig = speakers.find(s => s.name.toLowerCase() === speakerName.toLowerCase()) || {
+        region: "en-GB",
+        voice: "Kore",
+        tone: "Clear pronunciation"
+      };
+
+      let accentInstruction = "";
+      if (spkConfig.region === "en-GB") {
+        accentInstruction = "Speak in authentic British English (UK) accent. ";
+      } else if (spkConfig.region === "en-US") {
+        accentInstruction = "Speak in General American (US) accent. ";
+      } else if (spkConfig.region === "id-ID") {
+        accentInstruction = "Bicaralah dalam Bahasa Indonesia dengan pengucapan yang jelas dan alami. ";
+      }
+
+      const promptText = `${accentInstruction}Style instruction: ${spkConfig.tone}. Text: "${text}"`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: spkConfig.voice } }
+          }
+        },
+        model: "gemini-2.5-flash-preview-tts"
+      };
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        const status = response.status;
+        const msg = err.error?.message || `HTTP Error ${status}`;
+
+        if (status === 429 || msg.includes("QUOTA") || msg.includes("RESOURCE_EXHAUSTED")) {
+          updateQuotaStatusUI("QUOTA_EXHAUSTED", "Rate Limit 429 Hit", "Batas panggilan API per menit tercapai.");
+          showQuotaModal("Batas Kuota / Rate Limit Tercapai (429)", "Gemini API menolak permintaan audio baru karena kuota/rate limit habis.", msg);
+          throw new Error("QUOTA_EXHAUSTED: Kuota/Rate Limit Gemini API tercapai.");
+        } else if (status === 400 || status === 403) {
+          updateQuotaStatusUI("INVALID", "API Key Invalid", msg);
+          throw new Error("API Key Anda ditolak atau tidak valid.");
+        }
+
+        throw new Error(msg);
+      }
+
+      const result = await response.json();
+      const candidatePart = result?.candidates?.[0]?.content?.parts?.[0];
+      const audioData = candidatePart?.inlineData?.data;
+      const mimeType = candidatePart?.inlineData?.mimeType;
+
+      if (!audioData) {
+        throw new Error("Gagal menerima data audio dari Gemini API.");
+      }
+
+      let sampleRate = 24000;
+      if (mimeType) {
+        const match = mimeType.match(/rate=(\d+)/);
+        if (match) sampleRate = parseInt(match[1], 10);
+      }
+
+      const pcmBuffer = base64ToArrayBuffer(audioData);
+      const pcm16 = new Int16Array(pcmBuffer);
+      const audioBuffer = createAudioBufferFromPCM(pcm16, sampleRate);
+
+      // Store into cache
+      audioCache.set(cacheKey, audioBuffer);
+      updateCacheBadge();
+      updateQuotaStatusUI("OK", "API Active & Ready", "Panggilan Audio TTS berhasil.");
+
+      return audioBuffer;
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binaryString = window.atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    function createAudioBufferFromPCM(pcm16Data, sampleRate) {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const buffer = audioContext.createBuffer(1, pcm16Data.length, sampleRate);
+      const channelData = buffer.getChannelData(0);
+      for (let i = 0; i < pcm16Data.length; i++) {
+        channelData[i] = pcm16Data[i] / 32768.0;
+      }
+      return buffer;
+    }
+
+    // --- Audio Playback Logic ---
+    async function playSingleLine(index) {
+      stopPlayback();
+      isPlaying = true;
+      currentLineIndex = index;
+      renderDialogueList();
+      stopBtn.disabled = false;
+
+      const line = parsedLines[index];
+      statusText.textContent = `Generating audio (${line.speaker})...`;
+
+      try {
+        if (!line.audioBuffer) {
+          line.audioBuffer = await fetchGeminiTTS(line.text, line.speaker);
+        }
+        statusText.textContent = `Memutar: ${line.speaker}`;
+        await playAudioBuffer(line.audioBuffer);
+        statusText.textContent = "Selesai memutar baris.";
+      } catch (err) {
+        console.error(err);
+        showToast("Error Gemini API: " + err.message);
+        statusText.textContent = "Terjadi kesalahan audio.";
+      } finally {
+        isPlaying = false;
+        renderDialogueList();
+      }
+    }
+
+    async function playAllSequence() {
+      if (parsedLines.length === 0) return;
+      stopPlayback();
+
+      isPlaying = true;
+      playAllBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      for (let i = 0; i < parsedLines.length; i++) {
+        if (!isPlaying) break;
+
+        currentLineIndex = i;
+        lineProgress.textContent = `${i + 1}/${parsedLines.length} Baris`;
+        renderDialogueList();
+
+        const line = parsedLines[i];
+        statusText.textContent = `Generating/Memuat (${i + 1}/${parsedLines.length}): ${line.speaker}...`;
+
+        try {
+          if (!line.audioBuffer) {
+            line.audioBuffer = await fetchGeminiTTS(line.text, line.speaker);
+          }
+          if (!isPlaying) break;
+
+          statusText.textContent = `Memutar (${i + 1}/${parsedLines.length}): ${line.speaker}`;
+          await playAudioBuffer(line.audioBuffer);
+
+          await new Promise(resolve => setTimeout(resolve, 350));
+        } catch (err) {
+          console.error(err);
+          showToast(`Gagal pada baris ${i + 1}: ${err.message}`);
+          break;
+        }
+      }
+
+      statusText.textContent = "Selesai memutar seluruh dialog.";
+      isPlaying = false;
+      currentLineIndex = -1;
+      playAllBtn.disabled = false;
+      stopBtn.disabled = true;
+      renderDialogueList();
+    }
+
+    function playAudioBuffer(buffer) {
+      return new Promise((resolve) => {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+
+        currentAudioSource = audioContext.createBufferSource();
+        currentAudioSource.buffer = buffer;
+        currentAudioSource.playbackRate.value = playbackSpeed;
+        currentAudioSource.connect(audioContext.destination);
+
+        currentAudioSource.onended = () => {
+          currentAudioSource = null;
+          resolve();
+        };
+
+        currentAudioSource.start(0);
+      });
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      if (currentAudioSource) {
+        try { currentAudioSource.stop(); } catch(e){}
+        currentAudioSource = null;
+      }
+      playAllBtn.disabled = false;
+      stopBtn.disabled = true;
+      statusText.textContent = "Dipause / Dihentikan.";
+    }
+
+    // --- Audio Download, WAV Encoder & Resilient Batch Resume ---
+    async function downloadSingleLineAudio(index) {
+      const line = parsedLines[index];
+      statusText.textContent = `Menyiapkan download audio baris ${index + 1}...`;
+
+      try {
+        if (!line.audioBuffer) {
+          line.audioBuffer = await fetchGeminiTTS(line.text, line.speaker);
+        }
+
+        const wavBlob = audioBufferToWavBlob(line.audioBuffer);
+        const fileName = `IELTS_Line_${index + 1}_${line.speaker.replace(/\s+/g, '_')}.wav`;
+        downloadBlob(wavBlob, fileName);
+        statusText.textContent = `Berhasil mengunduh baris ${index + 1}.`;
+        showToast("Audio baris berhasil diunduh!");
+      } catch (err) {
+        console.error(err);
+        showToast("Gagal mengunduh audio: " + err.message);
+      }
+    }
+
+    async function downloadFullAudio(startIndex = 0) {
+      if (parsedLines.length === 0) return;
+
+      downloadFullAudioBtn.disabled = true;
+      resumeDownloadBtn.classList.add("hidden");
+      statusText.textContent = "Mengambil & menggabungkan seluruh audio dialog...";
+
+      const audioBuffers = startIndex > 0 ? [...batchDownloadState.completedBuffers] : [];
+
+      try {
+        for (let i = startIndex; i < parsedLines.length; i++) {
+          const line = parsedLines[i];
+          statusText.textContent = `Menyiapkan audio (${i + 1}/${parsedLines.length}): ${line.speaker}...`;
+          
+          try {
+            if (!line.audioBuffer) {
+              line.audioBuffer = await fetchGeminiTTS(line.text, line.speaker);
+            }
+            audioBuffers[i] = line.audioBuffer;
+            batchDownloadState.completedBuffers = audioBuffers;
+          } catch (lineErr) {
+            // Partial rescue handling on error
+            batchDownloadState.inProgress = true;
+            batchDownloadState.failedIndex = i;
+            
+            const completedCount = audioBuffers.filter(Boolean).length;
+            if (completedCount > 0) {
+              statusText.textContent = `Rate limit tercapai! Mengunduh ${completedCount} baris pertama...`;
+              const partialBuffer = concatenateAudioBuffers(audioBuffers.filter(Boolean), 0.4);
+              const wavBlob = audioBufferToWavBlob(partialBuffer);
+              downloadBlob(wavBlob, `IELTS_Listening_PARTIAL_1_to_${completedCount}.wav`);
+
+              resumeProgressText.textContent = `${completedCount}/${parsedLines.length}`;
+              resumeDownloadBtn.classList.remove("hidden");
+              showToast(`Berhasil mengunduh parsial (${completedCount}/${parsedLines.length} baris). Klik 'Lanjutkan Download Sisa' setelah rate limit reset!`);
+            }
+            throw lineErr;
+          }
+        }
+
+        statusText.textContent = "Menggabungkan file audio...";
+        const concatenatedBuffer = concatenateAudioBuffers(audioBuffers, 0.4);
+        const wavBlob = audioBufferToWavBlob(concatenatedBuffer);
+
+        downloadBlob(wavBlob, "IELTS_Listening_Mixed_Accent_Dialogue.wav");
+        statusText.textContent = "Audio dialog utuh berhasil diunduh!";
+        showToast("Seluruh audio dialog berhasil diunduh (.wav)!");
+        
+        // Reset batch state
+        batchDownloadState = { inProgress: false, completedBuffers: [], failedIndex: -1 };
+        resumeDownloadBtn.classList.add("hidden");
+      } catch (err) {
+        console.error(err);
+      } finally {
+        downloadFullAudioBtn.disabled = false;
+      }
+    }
+
+    resumeDownloadBtn.addEventListener("click", () => {
+      if (batchDownloadState.failedIndex >= 0) {
+        downloadFullAudio(batchDownloadState.failedIndex);
+      }
+    });
+
+    function concatenateAudioBuffers(buffers, pauseDurationSec = 0.3) {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      const validBuffers = buffers.filter(Boolean);
+      if (validBuffers.length === 0) return null;
+
+      const sampleRate = validBuffers[0].sampleRate;
+      const pauseLength = Math.floor(sampleRate * pauseDurationSec);
+      
+      let totalLength = 0;
+      validBuffers.forEach((buf, i) => {
+        totalLength += buf.length;
+        if (i < validBuffers.length - 1) totalLength += pauseLength;
+      });
+
+      const resultBuffer = audioContext.createBuffer(1, totalLength, sampleRate);
+      const outputChannel = resultBuffer.getChannelData(0);
+
+      let offset = 0;
+      validBuffers.forEach((buf, i) => {
+        outputChannel.set(buf.getChannelData(0), offset);
+        offset += buf.length;
+        if (i < validBuffers.length - 1) {
+          offset += pauseLength;
+        }
+      });
+
+      return resultBuffer;
+    }
+
+    function audioBufferToWavBlob(buffer) {
+      const numChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const format = 1;
+      const bitDepth = 16;
+      
+      const channelData = buffer.getChannelData(0);
+      const numSamples = channelData.length;
+      const blockAlign = numChannels * (bitDepth / 8);
+      const byteRate = sampleRate * blockAlign;
+      const dataSize = numSamples * blockAlign;
+      
+      const bufferLength = 44 + dataSize;
+      const arrayBuffer = new ArrayBuffer(bufferLength);
+      const view = new DataView(arrayBuffer);
+
+      writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeString(view, 8, 'WAVE');
+      writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, format, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitDepth, true);
+      writeString(view, 36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      let offset = 44;
+      for (let i = 0; i < numSamples; i++) {
+        let sample = Math.max(-1, Math.min(1, channelData[i]));
+        sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        view.setInt16(offset, sample, true);
+        offset += 2;
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
+
+    // --- Control Event Listeners ---
+    playAllBtn.addEventListener("click", playAllSequence);
+    stopBtn.addEventListener("click", stopPlayback);
+    downloadFullAudioBtn.addEventListener("click", () => downloadFullAudio(0));
+
+    function showToast(message) {
+      const toast = document.createElement("div");
+      toast.className = "fixed bottom-5 right-5 bg-indigo-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 transition-opacity duration-300";
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
